@@ -1,0 +1,17 @@
+{
+  "name": "all-axis-table",
+  "homepage": "https://github.com/skrosoft/all-axis-table",
+  "authors": [
+    "Vincent Guyard <vguyard@onaxis.cl>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
