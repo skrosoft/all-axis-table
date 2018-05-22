@@ -14,19 +14,19 @@
 	{
 		"id":1,
 		"timestamp":1521936000000,
-		"content":"32.00",
+		"content":{"value":"32.00", "css": "red"},
 		"can_edit":true
 	},
 	{
 		"id":1,
 		"timestamp":1522540800000,
-		"content":"32.00",
+		"content":{"value":"32.00"},
 		"can_edit":true
 	},
 	{
 		"id":1,
 		"timestamp":1523145600000,
-		"content":"32.00",
+		"content":{"value":"32.00"},
 		"can_edit":true
 	}
 ],
@@ -82,7 +82,7 @@
             this.opts = opts || {};
 
             this.form = $(this.opts.formSelector)
-            if (!this.form.length) throw new Error('Form is not found!');
+            if (!this.form.length && !this.opts.data) throw new Error('Form is not found!');
 
             this.container = opts.container;
             if (!this.container.length) throw new Error('Container is not found!');
@@ -248,11 +248,13 @@
 		},
         shouldLoadMorePast: function(){
 			if (!this.hasFixedColumns()) return true;
+			if (this.opts.data) return false; // si trabajamos con data estatica solo nos movemos dentro de la data
             return this.container.find('.table-responsive').scrollLeft() - this.getFixedColumnsWidth() < this.pixels_to_load;
         },
 		shouldLoadMoreFuture: function(){
 			//console.log("[ID=" + this.id + "] shouldLoadMoreFuture", this.hasFixedColumns(), this.container.find('.table-responsive > table:last').outerWidth(), this.container.find('.table-responsive').scrollLeft(), this.container.find('.table-responsive').outerWidth(), this.pixels_to_load);
 			if (!this.hasFixedColumns()) return true;
+            if (this.opts.data) return false; // si trabajamos con data estatica solo nos movemos dentro de la data
 			return this.container.find('.table-responsive > table:last').outerWidth() - 
 					(
 						this.container.find('.table-responsive').scrollLeft() + 
@@ -275,7 +277,11 @@
 			return this.container.find('table:last th.fixed.actions').outerWidth();
 		},
         setEvents: function(){
-            this.form.on('submit', $.proxy(this.onSubmit, this)).trigger('submit');
+            if (this.opts.data){
+                this.render(this.opts.data);
+            }else{
+                this.form.on('submit', $.proxy(this.onSubmit, this)).trigger('submit');
+            }
         },
 		setContainerEvents: function(){
 			this.container.off('click').on('click', 'table:last td:not(.fixed)', $.proxy(this.onDataCellClick, this));
@@ -328,9 +334,8 @@
 		onInputCellChange: function(e){
 			var callback = this.opts.onCellChange || function(){};
 			var input = $(e.target);
-			var row_data = input.closest('tr').data('data');
-			var cell_data = input.closest('td').data('data');
-			callback(row_data.id, cell_data.timestamp, input.val());
+			var cell = input.closest('td');
+			callback(cell.data('row_id'), cell.data('timestamp'), input.val());
 		},
 		onInputCellBlur: function(e){
 			window.setTimeout(function(){
@@ -563,11 +568,12 @@
             var months = ['Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.'];
             var quarters = ['T1', null, null, 'T2', null, null, 'T3', null, null, 'T4', null, null];
 
-            var formats = ['%D/%M/%Y', '%D/%M/%Y', '%MM %Y', '%T %Y']
-            var str = formats[type];
+            var str = this.opts.timeframeDateFormat[type];
 
             var date = new Date(ts);
 
+            str = str.replace(/%W/gi, this.getWeekNumber(date)[1]);
+            str = str.replace(/%C/gi, ((this.getWeekNumber(date)[0]) - 1970) * 53 + this.getWeekNumber(date)[1]);
             str = str.replace(/%MM/gi, months[date.getUTCMonth()]);
             str = str.replace(/%T/gi, quarters[date.getUTCMonth()]);
             str = str.replace(/%D/gi, date.getUTCDate() < 10 ? '0' + date.getUTCDate() : date.getUTCDate());
@@ -648,6 +654,19 @@
 
             this.updateContainer(container);
 		},
+        getWeekNumber: function(d) {
+            // Copy date so don't modify original
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            // Set to nearest Thursday: current date + 4 - current day number
+            // Make Sunday's day number 7
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            // Get first day of year
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            // Calculate full weeks to nearest Thursday
+            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            // Return array of year and week number
+            return [d.getUTCFullYear(), weekNo];
+        },
 		renderTableBefore: function(data){
             var table = this.container.find("table:last");
             var thead_row = table.find('thead tr');
@@ -683,8 +702,8 @@
         },
         getPreviousTimeframeTimestamp(timeframe, timestamp){
             while(!this.shouldTimestampExistAsColumn(timeframe, timestamp)){
-                timestamp-=86400000;
-            }
+                timestamp -= 86400000;
+            };
             return timestamp;
         },
         renderHeader: function(row, data, gotoLeft){
@@ -711,6 +730,10 @@
 
                     var td = $('<td data-value="0" data-timestamp="' + colTimestamp + '" data-row_id="' + data.axis_y_items_ref[row_index]['id'] + '"></td>');
 					td.data('data', data.axis_y_items_ref[row_index]);
+
+					if (this.opts.defaultCellValue){
+                        td.text(this.opts.defaultCellValue.content.value).data('can_edit', this.opts.defaultCellValue.can_edit);
+                    }
 					
 					row.find('td:eq('+ (gotoLeft ? i++ : (this.opts.buttons ? -2 : -1)) +')').after(td);
                 }
@@ -815,10 +838,12 @@
             }
 
             var defaults = {
-                formSelector: 'form',
+                formSelector: o.data ? false : 'form',
                 loadingImageSrc: 'data:image/jpeg;base64,',
                 loadingImageWidth: '64px',
                 timestampFieldName: 'timestamp',
+                timeframeDateFormat: ['%D/%M/%Y', '%D/%M/%Y', '%MM %Y', '%T %Y'],
+                defaultCellValue: false,
                 container: el
             };
 			

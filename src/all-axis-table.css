@@ -139,6 +139,7 @@ div.table-navbar{
 	.table-js-container table:not(.fixed-column) th.fixed,
 	.table-js-container table:not(.fixed-column) td.fixed{
 		visibility: hidden;
+        width: 1px;
 	}
 }
 @media(max-width:767px) {
