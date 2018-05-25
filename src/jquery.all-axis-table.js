@@ -788,9 +788,10 @@
 				
 				if (content.css){
 					// TODO ver si sirve ahi el value seteado a vacio
+                    // (yes, sirve porque puede no llegar el attribto value pero igual usamos el data() un poco mas abajo)
 					cell.data('value', "").addClass(content.css);
 				}
-				if (typeof content.value !== "undefined"){
+				if (typeof content.value !== "undefined" && !isNaN(content.value)){
 					cell.data('value', cell.data('value') + parseFloat(content.value));
 				}
 
