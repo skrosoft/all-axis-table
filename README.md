@@ -1,6 +1,6 @@
 # all-axis-table
 
-v1.1.2
+v1.1.4
 
 ---
 
