@@ -416,7 +416,7 @@
             var are_all_table_rendered = true;
             for(var i = 0; i < this.opts.navSyncWith.length; i++){
                 var instance = $(this.opts.navSyncWith[i]).data('AllAxisTableJS');
-                if (!instance.rendered) are_all_table_rendered = false;
+                if (instance && !instance.rendered) are_all_table_rendered = false;
             };
 
             // si la tabla y todas sus tablas syncronizadas estan renderizadas, lanzar el evento
