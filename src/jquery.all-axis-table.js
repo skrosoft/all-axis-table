@@ -187,7 +187,7 @@
             delete this.is_loading;
             for(var i = 0; i < this.opts.navSyncWith.length; i++){
                 var instance = $(this.opts.navSyncWith[i]).data('AllAxisTableJS');
-                if (instance.is_loading)
+                if (instance && instance.is_loading)
                     return;
             }
             this.loading.hide();
