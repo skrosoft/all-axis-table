@@ -11,6 +11,7 @@
     jQuery.AllAxisTableJS = {
         form: null,
         container: null,
+        header_container: null,
         timestamp: null,
         timeframe: null,
         page: null,
@@ -119,6 +120,8 @@
             $.when(this.queue).done($.proxy(function(){
                 //console.log('DEBUG: [ID='+this.obj.id+'] => ' + this.scrollLeft, this.obj.container.find('.table-responsive').scrollLeft());
                 this.obj.queue = this.obj.container.find('.table-responsive').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
+                if (this.obj.header_container) // lo mismo pero para el header fijo si es que hay
+                    this.obj.header_queue = this.obj.header_container.find('.table-responsive').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
             }, {obj: this, scrollLeft: scrollLeft, scrollSpeed: this.scroll_speed}));
         },
         prepareSubmit: function(e, params){
@@ -243,8 +246,14 @@
 
             var cell = $(e.target);
 
-            if (!cell.data('can_edit'))
-                return;
+            if (!cell.data('can_edit')){
+                if(!(cell.data('timestamp') > new Date().getTime()) || this.container.hasClass('panel-iniciativas')
+                    || this.container.hasClass('capacidad-utilizada') || this.container.hasClass('capacidad-disponible')
+                    || this.container.hasClass('capacity-recurso') || this.container.hasClass('hh-recursos-disponibles')
+                    || this.container.hasClass('capacidad-disponible-by-rol')){
+                    return;
+                }
+            }
 
             var input = $('<input type="number" min="0" max="99" step="1"/>')
                 .val(cell.text());
@@ -382,6 +391,8 @@
                 this.renderNavbar(data);
                 this.makeColumnsStatic();
                 this.makeButtonsStatic();
+                this.makeFixedHeader(true);
+                this.setFixedHeaderColumnEvents();
 
             }else{
 
@@ -392,6 +403,7 @@
                 }
 
                 this.updateTableData(data);
+                this.makeFixedHeader(false);
 
                 /********/
 
@@ -503,6 +515,74 @@
                 $(this).height($table.find('tr:eq(' + i + ')').height());
             });
         },
+        makeFixedHeader: function(isFirstCall){
+
+            if (!this.opts.floating_header)	return;
+
+            if (!isFirstCall)  this.header_container.remove();
+
+            var mT = $('#main-title');
+
+            this.header_container = this.container.clone();
+            this.header_container.find('> .table-navbar, table > tbody, > .multiselect-native-select').remove();
+
+            mT.append(this.header_container);
+
+            this.makeFixedHeaderColumnsWidthIquals();
+
+            // agregar navegacion
+            var actionsRow = this.header_container.find('> .table-responsive > .table.actions > thead tr');
+
+            // celda de action
+            var actionsCel = actionsRow.find('th').removeClass('d-none').last().html('');
+
+            var btHeadLeft = $('<a href="#">&#8592;</a>');
+            btHeadLeft.on('click', {timestamp: -1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-left'}, $.proxy(this.syncNavClick, this));
+
+            var btHeadRight = $('<a href="#">&#8594;</a>');
+            btHeadRight.on('click', {timestamp: +1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-right'}, $.proxy(this.syncNavClick, this));
+
+            $('<div></div>').append(btHeadLeft).append('<span> | </span>').append(btHeadRight).appendTo(actionsCel);
+
+            if (isFirstCall){
+
+                $(document).on('scroll', $.proxy(function(e, flag){
+
+                    var shouldBeVisible = ((this.container.find('> .table-responsive').offset().top - $(document).scrollTop()) - mT.position().top - (mT.height() - (mT.find('> .table-js-container:visible').height() || 0 ))) < 0;
+
+                    this.header_container.toggle(shouldBeVisible);
+
+                    if (shouldBeVisible) this.makeFixedHeaderColumnsWidthIquals();
+
+                }, this)).trigger('scroll');
+
+            }else{
+                // igualar el scroll left
+                var sL = this.container.find('> .table-responsive').scrollLeft();
+                this.header_container.find('> .table-responsive').scrollLeft(sL);
+
+                $(document).trigger('scroll');
+            }
+        },
+        setFixedHeaderColumnEvents: function(){
+
+            // si no tiene floating header, no tiene filtro de header
+            if (!this.opts.floating_header)	return;
+
+            this.container.find('th.fixed:not(.actions)').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
+            this.header_container.find('th.fixed:not(.actions)').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
+        },
+        makeFixedHeaderColumnsWidthIquals: function(){
+            // igualar los anchos
+            var cols_target = this.header_container.find('> .table-responsive > .table > thead th');
+            var cols_source = this.container.find(' > .table-responsive > .table > thead th');
+            $(cols_target).each(function(i, o){
+                var d = $(cols_source.get(i));
+                var mw = d.outerWidth(); mw = (mw == 0 ? 70 : mw);
+                var w = d.width(); w = (w == 0 ? 80 : w);
+                $(o).width(w).css({minWidth: mw});
+            });
+        },
         renderNavbar: function(data){
             var nb = this.container.find('.table-navbar');
             nb.find('.current-page').text(data.axis_y_current_page);
@@ -555,11 +635,16 @@
             /** @var string fixedCols */
             for (var fixedCols in data.axis_y_items_ref[0]){
                 if (fixedCols === 'id' || !data.axis_x_labels[fixedCols]) continue;
-                row.append($('<th class="fixed" title="' + this.htmlEntities(data.axis_x_labels[fixedCols]) + '">' + data.axis_x_labels[fixedCols] + '</th>'));
+                row.append($(
+                    '<th class="fixed" data-column-name="' + fixedCols + '" title="' + this.htmlEntities(data.axis_x_labels[fixedCols]) + '">' + data.axis_x_labels[fixedCols] + '</th>'
+                ));
+                container.append($('<select data-column-name="' + fixedCols + '" multiple="multiple"></select>'));
             }
 
             if (this.opts.buttons){
                 row.append($('<th class="fixed actions text-center">Acciones</th>'));
+            }else{
+                row.append($('<th class="fixed actions d-none"></th>'));
             }
 
             this.renderHeader(row, data);
@@ -587,6 +672,8 @@
                 if (this.opts.buttons){
                     var buttons = this.opts.buttons; if (typeof buttons === 'function'){ buttons = buttons(i, data.axis_y_items_ref[i]); }
                     row.append($('<td class="fixed actions">' + buttons.replace(/\{id\}/gi, data.axis_y_items_ref[i]['id']) + '</td>'));
+                }else{
+                    row.append($('<td class="fixed actions d-none"></td>'));
                 }
 
                 this.renderRow(row, data, i);
@@ -595,10 +682,109 @@
             }
 
             this.updateContainer(container);
+            this.applyHeaderColumnsMultiSelect();
         },
         updateContainer: function(container){
             this.container.html(container.children());
             this.setContainerEvents();
+        },
+        applyHeaderColumnsMultiSelect: function(){
+
+            // Obtenemos todos los valores posibles para los filtros por columnas
+            this.container.find('> select[multiple]').each($.proxy(function(iSelect, select){
+                var values = [];
+                this.container.find('.table:not(.fixed-column) tbody tr').each($.proxy(function(iRow, row){
+                    values.push($(row).find('td.fixed:eq(' + iSelect + ')').text());
+                }, this));
+                $($.unique(values)).each($.proxy(function(i, value){
+                    $(select).append($('<option selected>' + value + '</option>'));
+                }, this));
+            }, this));
+
+            // Applicamos el plugin multiselect
+            this.container.find('> select[multiple]').multiselect({
+                includeSelectAllOption: true,
+                selectAllText: 'Seleccionar todos',
+                enableFiltering: true,
+                enableCaseInsensitiveFiltering: true,
+                filterPlaceholder: 'Buscar por...',
+                selectAllJustVisible: true,
+                maxHeight: 200,
+                buttonWidth: '100%'
+            });
+
+            // Los ocultamos y los mostraremos cuando sea necesario
+            this.container.find('> .multiselect-native-select').hide();
+
+            $(document).on('click', $.proxy(this.onDocumentClick, this));
+        },
+        onDocumentClick: function(e){
+
+            // ocultamos los eventuales select visibles
+            var visible_selects = this.container.find('> .multiselect-native-select:visible').hide();
+
+            // si no hay ninguno, no hacemos nada
+            if (!visible_selects.length) return;
+
+            // mostramos el loader
+            this.showLoading();
+
+            // juntamos los valores visibles
+            var values_arr = [];
+            this.container.find('> .multiselect-native-select select').each(function(){
+                var values = [];
+                $(this).find('option:selected').each(function(){
+                    values.push($(this).text());
+                });
+                values_arr.push(values);
+            });
+
+            // reseteamos los elementos visibles
+            this.container.find('tbody tr').show();
+
+            // eseteamos los elementos visibles y detectamos las lineas a ocultar
+            var excluded_indexes = [];
+            this.container.find('table.table:not(.fixed-column) tbody tr').each(function(i1, row){
+                $(values_arr).each(function(i2, values){
+                    if (values.indexOf($(row).find('> td:eq(' + i2 + ')').text()) === -1)
+                        excluded_indexes.push(i1);
+                });
+            });
+
+            // ocultamos las lineas que no hacen match
+            $($.unique(excluded_indexes)).each($.proxy(function(i1, rowId){
+                this.container.find('table.table').each($.proxy(function(i2, table){
+                    $(table).find('tbody tr:eq(' + rowId + ')').hide();
+                }, this));
+            }, this));
+
+            // ocultamos el loader dentro de 300 milli segundo para que sea visible
+            window.setTimeout($.proxy(this.hideLoading, this), 300);
+        },
+        onClickFixedHeaderColumns: function(e){
+            e.preventDefault();
+            e.stopPropagation();
+
+            var column      = $(e.target);
+            var column_name = $(e.target).data('column-name');
+
+            this.container.find('.multiselect-native-select').hide();
+
+            var select = this.container.find('select[data-column-name=' + column_name + ']');
+            var multiselect = select.closest('.multiselect-native-select');
+
+            multiselect.show();
+
+            multiselect.find('button').hide();
+            multiselect.find('ul.dropdown-menu').addClass('show');
+
+            multiselect.css({
+                position: 'fixed',
+                top: column.offset().top - $(document).scrollTop() + 40,
+                left: column.offset().left,
+                zIndex: 100,
+                width: 400
+            });
         },
         renderNoData: function(){
 

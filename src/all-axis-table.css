@@ -152,3 +152,33 @@ div.table-navbar{
         min-width: auto !important;
     }
 }
+
+/***** ESTILO PARA EL HEADER FLOTANTE *****/
+#main-title .table{
+    margin-bottom: 0;
+    background-color: white;
+}
+#main-title > .transbank-table-js{
+    background: white;
+    padding: 0 15px;
+}
+#main-title .table-js-container .table-responsive>.fixed-column{
+    left: 15px;
+}
+#main-title .table-js-container .table-responsive>.fixed-column.actions{
+    left: auto;
+    right: 15px;
+}
+#main-title .table-js-container .actions a{
+    color: black;
+}
+/***** ESTILO PARA LOS FILTROS POR COLUMNA *****/
+.table-js-container .multiselect-native-select li.multiselect-filter{
+    margin: 5px;
+}
+.table-js-container .multiselect-native-select li.multiselect-filter .input-group{
+    margin: 0;
+}
+.table-js-container .multiselect-native-select .multiselect-container.dropdown-menu{
+    background: #FCFCFD; box-shadow: 3px 3px 6px 1px #ddd;
+}
