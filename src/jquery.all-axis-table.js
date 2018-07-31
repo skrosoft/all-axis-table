@@ -247,12 +247,17 @@
             var cell = $(e.target);
 
             if (!cell.data('can_edit')){
-                if(!(cell.data('timestamp') > new Date().getTime()) || this.container.hasClass('panel-iniciativas')
-                    || this.container.hasClass('capacidad-utilizada') || this.container.hasClass('capacidad-disponible')
-                    || this.container.hasClass('capacity-recurso') || this.container.hasClass('hh-recursos-disponibles')
-                    || this.container.hasClass('capacidad-disponible-by-rol')){
-                    return;
-                }
+            	if(!(cell.data('timestamp') > new Date().getTime()) || this.container.hasClass('panel-iniciativas')
+            			|| this.container.hasClass('capacidad-utilizada') || this.container.hasClass('capacidad-disponible')
+            			|| this.container.hasClass('hh-recursos-disponibles') || this.container.hasClass('capacidad-disponible-by-rol')){
+            		return;
+            	}else if(this.container.hasClass('capacity-recurso') && cell.data('disabled')){
+            		return;
+            	}else if(this.container.hasClass('capacidad-asignable') && cell.data('disabled')){
+            		return;
+            	}else if(this.container.hasClass('capacidad-asignable') && !(cell.data('timestamp') > new Date().getTime())){
+            		return;
+            	}
             }
 
             var input = $('<input type="number" min="0" max="99" step="1"/>')
@@ -665,7 +670,8 @@
                     if (value === null){
                         row.append($('<td class="fixed font-italic">&lt;sin datos&gt;</td>'));
                     }else{
-                        row.append($('<td class="fixed" title="' + this.htmlEntities(value) + '">' + value + '</td>'));
+                        // TODO Alexis dejo una logica estatica, sacarla cuando se pueda
+                        row.append($('<td class="fixed" title="' + this.htmlEntities(value) + '"' + ((data.axis_y_items_ref[i]['vigente']) ? '' : 'data-disabled="disabled"') + '>' + value + '</td>'));
                     }
                 }
 
@@ -866,7 +872,8 @@
 
                 if (this.shouldTimestampExistAsColumn(data.axis_x_timeframe, colTimestamp)){
 
-                    var td = $('<td data-value="0" data-timestamp="' + colTimestamp + '" data-row_id="' + data.axis_y_items_ref[row_index]['id'] + '"></td>');
+                    // TODO Alexis dejo una logica estatica, sacarla cuando se pueda
+                    var td = $('<td data-value="0" data-timestamp="' + colTimestamp + '" data-row_id="' + data.axis_y_items_ref[row_index]['id'] + '"' + ((data.axis_y_items_ref[row_index]['vigente']) ? '' : 'data-disabled="disabled"') + '></td>');
                     td.data('data', data.axis_y_items_ref[row_index]);
 
                     if (this.opts.defaultCellValue){
