@@ -23,6 +23,9 @@
     z-index: 10000;
 }
 
+.table-js-container.no-buttons .table.fixed-column.actions tbody{
+	display: none;
+}
 .table-js-container th{
     position: inherit;
     left: inherit;
@@ -77,8 +80,11 @@ div.table-navbar{
 	color: white !important;
 }
 .table-js-container{
-	margin-top: 20px;
+	/*margin-top: 20px;*/
     position: relative; /* para que el left:0 de la tabla column fixed este bien posicionada */
+}
+.table-js-container thead .actions a{
+    color: black;
 }
 .table-js-container > div > table > tbody > tr:nth-child(1) > td{
     font-weight: normal;
@@ -168,9 +174,6 @@ div.table-navbar{
 #main-title .table-js-container .table-responsive>.fixed-column.actions{
     left: auto;
     right: 15px;
-}
-#main-title .table-js-container .actions a{
-    color: black;
 }
 /***** ESTILO PARA LOS FILTROS POR COLUMNA *****/
 .table-js-container .multiselect-native-select li.multiselect-filter{

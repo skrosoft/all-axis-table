@@ -40,7 +40,7 @@
             this.container = opts.container;
             if (!this.container.length) throw new Error('Container is not found!');
 
-            this.container.addClass('table-js-container');
+            this.container.addClass('table-js-container').toggleClass('no-buttons', !this.opts.buttons);
 
             this.createLoadingFrame();
             this.setEvents();
@@ -216,21 +216,6 @@
                     this.container.find('.table-responsive').outerWidth()
                 ) < this.pixels_to_load;
         },
-        hasFixedColumns: function(){
-            return this.container.find('table:first').is(':visible');
-        },
-        getFixedColumnsWidth: function(forced){
-            if (!this.hasFixedColumns() && !forced) return 0;
-
-            var width = 0;
-            this.container.find('table:last th.fixed:not(.actions)').each(function(){
-                width += $(this).outerWidth();
-            });
-            return width;
-        },
-        getActionColumnWidth: function(){
-            return this.container.find('table:last th.fixed.actions').outerWidth();
-        },
         setEvents: function(){
             if (this.opts.data){
                 this.render(this.opts.data);
@@ -247,17 +232,7 @@
             var cell = $(e.target);
 
             if (!cell.data('can_edit')){
-            	if(!(cell.data('timestamp') > new Date().getTime()) || this.container.hasClass('panel-iniciativas')
-            			|| this.container.hasClass('capacidad-utilizada') || this.container.hasClass('capacidad-disponible')
-            			|| this.container.hasClass('hh-recursos-disponibles') || this.container.hasClass('capacidad-disponible-by-rol')){
-            		return;
-            	}else if(this.container.hasClass('capacity-recurso') && cell.data('disabled')){
-            		return;
-            	}else if(this.container.hasClass('capacidad-asignable') && cell.data('disabled')){
-            		return;
-            	}else if(this.container.hasClass('capacidad-asignable') && !(cell.data('timestamp') > new Date().getTime())){
-            		return;
-            	}
+            	return;
             }
 
             var input = $('<input type="number" min="0" max="99" step="1"/>')
@@ -323,6 +298,9 @@
                 this.data = null;
                 this.form_data = null;
                 this.form_data_history = [];
+
+                if (this.header_container)
+                    this.header_container.remove();
             }
 
             if (this.form_data === null){
@@ -398,6 +376,7 @@
                 this.makeButtonsStatic();
                 this.makeFixedHeader(true);
                 this.setFixedHeaderColumnEvents();
+                this.setActionsCellNav(this.container);
 
             }else{
 
@@ -460,7 +439,7 @@
                 var instance = $(this.opts.navSyncWith[i]).data('AllAxisTableJS');
                 width = Math.max(width, instance.getFixedColumnsWidth(true));
             }
-
+			
             if (width > this.getFixedColumnsWidth(true)){
                 this.forceFixedColumnsWidth(width);
             }
@@ -468,7 +447,8 @@
         forceFixedColumnsWidth: function(width){
             var tableFixedCols = this.container.find('table.table.fixed-column:not(.actions) th.fixed:not(.actions), table:last th.fixed:not(.actions)');
             var widthPerColumns = width / tableFixedCols.length * 2;
-            tableFixedCols.css({
+			var tableBodyCols = this.container.find('table.table.fixed-column:not(.actions) td.fixed:not(.actions), table:last td.fixed:not(.actions)');
+            tableFixedCols.add(tableBodyCols).css({
                 minWidth: widthPerColumns,
                 maxWidth: widthPerColumns
             });
@@ -489,6 +469,21 @@
         forceActionColumnWidth: function(width){
             this.container.find('table.table.fixed-column.actions th.fixed.actions, table:last th.fixed.actions')
                 .css({minWidth: width, maxWidth: width });
+        },
+        hasFixedColumns: function(){
+            return this.container.find('table:first').is(':visible');
+        },
+        getFixedColumnsWidth: function(forced){
+            if (!this.hasFixedColumns() && !forced) return 0;
+
+            var width = 0;
+            this.container.find('table:last th.fixed:not(.actions)').each(function(){
+                width += $(this).outerWidth();
+            });
+            return width;
+        },
+        getActionColumnWidth: function(){
+            return this.container.find('table:last th.fixed.actions').outerWidth();
         },
         makeColumnsStatic: function(){
 
@@ -535,19 +530,7 @@
 
             this.makeFixedHeaderColumnsWidthIquals();
 
-            // agregar navegacion
-            var actionsRow = this.header_container.find('> .table-responsive > .table.actions > thead tr');
-
-            // celda de action
-            var actionsCel = actionsRow.find('th').removeClass('d-none').last().html('');
-
-            var btHeadLeft = $('<a href="#">&#8592;</a>');
-            btHeadLeft.on('click', {timestamp: -1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-left'}, $.proxy(this.syncNavClick, this));
-
-            var btHeadRight = $('<a href="#">&#8594;</a>');
-            btHeadRight.on('click', {timestamp: +1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-right'}, $.proxy(this.syncNavClick, this));
-
-            $('<div></div>').append(btHeadLeft).append('<span> | </span>').append(btHeadRight).appendTo(actionsCel);
+            this.setActionsCellNav(this.header_container);
 
             if (isFirstCall){
 
@@ -559,15 +542,26 @@
 
                     if (shouldBeVisible) this.makeFixedHeaderColumnsWidthIquals();
 
-                }, this)).trigger('scroll');
+                    // igualar el scroll left
+                    var sL = this.container.find('> .table-responsive').scrollLeft();
+                    this.header_container.find('> .table-responsive').scrollLeft(sL);
 
-            }else{
-                // igualar el scroll left
-                var sL = this.container.find('> .table-responsive').scrollLeft();
-                this.header_container.find('> .table-responsive').scrollLeft(sL);
-
-                $(document).trigger('scroll');
+                }, this));
             }
+
+            $(document).trigger('scroll');
+        },
+        setActionsCellNav: function(container){
+
+            var actionsCel = container.find('.table.fixed-column.actions thead th').html('').removeClass('d-none');
+
+            var btHeadLeft = $('<a href="#">&#8592;</a>');
+            btHeadLeft.on('click', {timestamp: -1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-left'}, $.proxy(this.syncNavClick, this));
+
+            var btHeadRight = $('<a href="#">&#8594;</a>');
+            btHeadRight.on('click', {timestamp: +1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-right'}, $.proxy(this.syncNavClick, this));
+
+            $('<div></div>').append(btHeadLeft).append('<span> | </span>').append(btHeadRight).appendTo(actionsCel);
         },
         setFixedHeaderColumnEvents: function(){
 
@@ -646,7 +640,9 @@
                 container.append($('<select data-column-name="' + fixedCols + '" multiple="multiple"></select>'));
             }
 
-            if (this.opts.buttons){
+			// se desactivo ese if, idealmente, una opcion deberia indicar si se activan las navegaciones en esa columna
+			// y si es asi, siempre necesitaremos esta columna como visible
+            if (this.opts.buttons || true){
                 row.append($('<th class="fixed actions text-center">Acciones</th>'));
             }else{
                 row.append($('<th class="fixed actions d-none"></th>'));
@@ -684,7 +680,7 @@
 
                 this.renderRow(row, data, i);
 
-                tbody.append(row);
+				tbody.append(row);
             }
 
             this.updateContainer(container);
@@ -924,7 +920,7 @@
 
                 var cell = this.container.find('td[data-row_id=' + data.axis_y_items[row_index].id + ']' +
                     '[data-timestamp=' + this.getPreviousTimeframeTimestamp(data.axis_x_timeframe, data.axis_y_items[row_index].timestamp) + ']');
-
+					
                 if (forced)
                     cell.data('value', 0).text('');
 
@@ -932,13 +928,14 @@
                 var content = item.content;
 
                 if (content.css){
-                    // TODO ver si sirve ahi el value seteado a vacio
-                    // (yes, sirve porque puede no llegar el attribto value pero igual usamos el data() un poco mas abajo)
-                    cell.data('value', "").addClass(content.css);
+                    cell.addClass(content.css);
                 }
                 if (content.value && typeof content.value !== "undefined" && !isNaN(content.value)){
                     cell.data('value', cell.data('value') + parseFloat(content.value));
                 }
+				else if (content.value == null){
+					cell.data('value', '');
+				}
 
                 // TODO ver si es util guardar el can_edit ahi
                 cell.text(cell.data('value')).data('can_edit', item.can_edit === true).data('data', item);
@@ -968,7 +965,7 @@
         var elements = this;
         return this.each(function(index, el){
 
-            var el = $(this);
+            var el = $(this).html('').off();
 
             var o = opts || {};
 
