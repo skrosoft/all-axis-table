@@ -701,8 +701,16 @@
                 this.container.find('.table:not(.fixed-column) tbody tr').each($.proxy(function(iRow, row){
                     values.push($(row).find('td.fixed:eq(' + iSelect + ')').text());
                 }, this));
-                $($.unique(values)).each($.proxy(function(i, value){
-                    $(select).append($('<option selected>' + value + '</option>'));
+				
+				values = values.filter(function(value, index, self) { 
+					return self.indexOf(value) === index;
+				});
+				
+				//console.log(iSelect, values);
+				
+                $(values).each($.proxy(function(i, value){
+					var s_option = $('<option selected></option>').text(value).attr('value', value);
+                    $(select).append(s_option);
                 }, this));
             }, this));
 
