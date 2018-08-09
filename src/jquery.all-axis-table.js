@@ -642,7 +642,10 @@
 
 			// se desactivo ese if, idealmente, una opcion deberia indicar si se activan las navegaciones en esa columna
 			// y si es asi, siempre necesitaremos esta columna como visible
-            if (this.opts.buttons || true){
+			if (!this.opts.buttons)
+				this.opts.buttons = 'header-only';
+			
+            if (this.opts.buttons){
                 row.append($('<th class="fixed actions text-center">Acciones</th>'));
             }else{
                 row.append($('<th class="fixed actions d-none"></th>'));
@@ -671,7 +674,7 @@
                     }
                 }
 
-                if (this.opts.buttons){
+                if (this.opts.buttons && this.opts.buttons != 'header-only'){
                     var buttons = this.opts.buttons; if (typeof buttons === 'function'){ buttons = buttons(i, data.axis_y_items_ref[i]); }
                     row.append($('<td class="fixed actions">' + buttons.replace(/\{id\}/gi, data.axis_y_items_ref[i]['id']) + '</td>'));
                 }else{
