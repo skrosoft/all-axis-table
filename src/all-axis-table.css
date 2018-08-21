@@ -18,9 +18,13 @@
     height: 100%;
     background: rgba(255, 255, 255, 0.8);
     text-align: center;
-    padding-top: 10%;
+    padding-top: 15%;
     display: none;
-    z-index: 10000;
+    z-index: 100;
+}
+
+body.all-axis-table-loading #main-title > .transbank-table-js{
+	display: none !important;
 }
 
 .table-js-container.no-buttons .table.fixed-column.actions tbody{
@@ -174,6 +178,19 @@ div.table-navbar{
 #main-title .table-js-container .table-responsive>.fixed-column.actions{
     left: auto;
     right: 15px;
+}
+.floating-header {
+    background: white;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 200;
+}
+.floating-header > .table-js-container {
+    display: block !important;
+}
+.floating-header .table{
+    margin: 0;
 }
 /***** ESTILO PARA LOS FILTROS POR COLUMNA *****/
 .table-js-container .multiselect-native-select li.multiselect-filter{

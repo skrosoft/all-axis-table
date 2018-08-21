@@ -119,16 +119,16 @@
         addAnimateScrollToQueue: function(scrollLeft){
             $.when(this.queue).done($.proxy(function(){
                 //console.log('DEBUG: [ID='+this.obj.id+'] => ' + this.scrollLeft, this.obj.container.find('.table-responsive').scrollLeft());
-                this.obj.queue = this.obj.container.find('.table-responsive').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
+                this.obj.queue = this.obj.container.find('.table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
                 if (this.obj.header_container) // lo mismo pero para el header fijo si es que hay
-                    this.obj.header_queue = this.obj.header_container.find('.table-responsive').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
+                    this.obj.header_queue = this.obj.header_container.find('.table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
             }, {obj: this, scrollLeft: scrollLeft, scrollSpeed: this.scroll_speed}));
         },
         prepareSubmit: function(e, params){
             e.preventDefault();
-            params = params || {};
+			e.stopPropagation();
 
-            //console.log('[ID='+this.id+'] prepareSubmit');
+            params = params || {};
 
             // actualizamos el pixel to scroll segun el ancho de la primera columna no fixed
             this.pixels_to_scroll = params.pixels_to_scroll ? params.pixels_to_scroll : (this.getDataColWidth() * this.x_axis_scroll_item_count);
@@ -185,6 +185,7 @@
         showLoading: function(){
             this.is_loading = true;
             this.loading.show();
+			$(document.body).addClass('all-axis-table-loading');
         },
         hideLoading: function(){
             delete this.is_loading;
@@ -194,6 +195,7 @@
                     return;
             }
             this.loading.hide();
+			$(document.body).removeClass('all-axis-table-loading');
         },
         isLoading: function(){
             return this.is_loading === true;
@@ -225,7 +227,11 @@
         },
         setContainerEvents: function(){
             this.container.off('click').on('click', 'table:last td:not(.fixed)', $.proxy(this.onDataCellClick, this));
+			this.container.off('scroll').on('scroll', $.proxy(this.onContainerScroll, this));
         },
+		onContainerScroll: function(e){
+			this.container.find('.floating-header').css('top', $(e.target).prop('scrollTop'));
+		},
         onDataCellClick: function(e){
             e.preventDefault();
 
@@ -388,6 +394,7 @@
 
                 this.updateTableData(data);
                 this.makeFixedHeader(false);
+                this.setFixedHeaderColumnEvents();
 
                 /********/
 
@@ -437,9 +444,9 @@
 
             for(var i = 0; i < this.opts.navSyncWith.length; i++){
                 var instance = $(this.opts.navSyncWith[i]).data('AllAxisTableJS');
-                width = Math.max(width, instance.getFixedColumnsWidth(true));
+                if (instance)	width = Math.max(width, instance.getFixedColumnsWidth(true));
             }
-			
+
             if (width > this.getFixedColumnsWidth(true)){
                 this.forceFixedColumnsWidth(width);
             }
@@ -459,7 +466,7 @@
 
             for(var i = 0; i < this.opts.navSyncWith.length; i++){
                 var instance = $(this.opts.navSyncWith[i]).data('AllAxisTableJS');
-                width = Math.max(width, instance.getActionColumnWidth());
+                if (instance)	width = Math.max(width, instance.getActionColumnWidth());
             }
 
             width = Math.max(width, this.getActionColumnWidth());
@@ -519,12 +526,17 @@
 
             if (!this.opts.floating_header)	return;
 
-            if (!isFirstCall)  this.header_container.remove();
+            if (this.header_container)
+                this.header_container.add(this.container.find('.floating-header')).remove();
 
-            var mT = $('#main-title');
+			var mT = this.opts.floating_header;
 
-            this.header_container = this.container.clone();
-            this.header_container.find('> .table-navbar, table > tbody, > .multiselect-native-select').remove();
+			if (this.opts.floating_header === true){
+				mT = $('<div class="floating-header"></div>').appendTo(this.container);
+			}
+
+            this.header_container = this.container.clone().removeAttr('style').removeClass('table-responsive');
+            this.header_container.find('> .table-navbar, table > tbody, > .multiselect-native-select, .floating-header').remove();
 
             mT.append(this.header_container);
 
@@ -549,17 +561,17 @@
                 }, this));
             }
 
-            $(document).trigger('scroll');
+            $(document).add(this.container).trigger('scroll');
         },
         setActionsCellNav: function(container){
 
             var actionsCel = container.find('.table.fixed-column.actions thead th').html('').removeClass('d-none');
 
-            var btHeadLeft = $('<a href="#">&#8592;</a>');
-            btHeadLeft.on('click', {timestamp: -1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-left'}, $.proxy(this.syncNavClick, this));
+            var btHeadLeft = $('<a href="#" data-index="0">&#8592;</a>');
+            btHeadLeft.off('click').on('click', {timestamp: -1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-left'}, $.proxy(this.syncNavClick, this));
 
-            var btHeadRight = $('<a href="#">&#8594;</a>');
-            btHeadRight.on('click', {timestamp: +1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-right'}, $.proxy(this.syncNavClick, this));
+            var btHeadRight = $('<a href="#" data-index="1">&#8594;</a>');
+            btHeadRight.off('click').on('click', {timestamp: +1}, $.proxy(this.prepareSubmit, this)).on('click', {c: 'page-right'}, $.proxy(this.syncNavClick, this));
 
             $('<div></div>').append(btHeadLeft).append('<span> | </span>').append(btHeadRight).appendTo(actionsCel);
         },
@@ -568,19 +580,28 @@
             // si no tiene floating header, no tiene filtro de header
             if (!this.opts.floating_header)	return;
 
-            this.container.find('th.fixed:not(.actions)').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
-            this.header_container.find('th.fixed:not(.actions)').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
+            this.container.find('th.fixed:not(.actions)').off('click').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
+			if (this.header_container)
+				this.header_container.find('th.fixed:not(.actions)').off('click').on('click', $.proxy(this.onClickFixedHeaderColumns, this));
         },
         makeFixedHeaderColumnsWidthIquals: function(){
+            if (!this.header_container || !this.container) return;
+
             // igualar los anchos
             var cols_target = this.header_container.find('> .table-responsive > .table > thead th');
             var cols_source = this.container.find(' > .table-responsive > .table > thead th');
-            $(cols_target).each(function(i, o){
+            $(cols_target).each($.proxy(function(i, o){
+
                 var d = $(cols_source.get(i));
-                var mw = d.outerWidth(); mw = (mw == 0 ? 70 : mw);
-                var w = d.width(); w = (w == 0 ? 80 : w);
+                var mw = d.outerWidth(); mw = (mw === 0 ? 70 : mw);
+                var w = d.width(); w = (w === 0 ? 80 : w);
                 $(o).width(w).css({minWidth: mw});
-            });
+
+                // igualamos tambien el body así al realizar filtros las columnas no cambian de ancho.
+                this.container.find(' > .table-responsive > .table > tbody td.fixed:nth-child(' + (i+1) + ')')
+                    .attr('style', $(o).attr('style'));
+
+            }, this));
         },
         renderNavbar: function(data){
             var nb = this.container.find('.table-navbar');
@@ -623,6 +644,9 @@
             table.append(thead);
             table.append(tbody);
 
+			if (this.opts.max_height)
+				container.addClass('table-responsive').css({maxHeight: this.opts.max_height});
+
             table_responsive.append(table);
 
             container.append(this.createNavBar());
@@ -644,7 +668,7 @@
 			// y si es asi, siempre necesitaremos esta columna como visible
 			if (!this.opts.buttons)
 				this.opts.buttons = 'header-only';
-			
+
             if (this.opts.buttons){
                 row.append($('<th class="fixed actions text-center">Acciones</th>'));
             }else{
@@ -691,6 +715,9 @@
         },
         updateContainer: function(container){
             this.container.html(container.children());
+			this.container
+				.addClass(container.attr('class'))
+				.attr('style', container.attr('style'));
             this.setContainerEvents();
         },
         applyHeaderColumnsMultiSelect: function(){
@@ -701,13 +728,11 @@
                 this.container.find('.table:not(.fixed-column) tbody tr').each($.proxy(function(iRow, row){
                     values.push($(row).find('td.fixed:eq(' + iSelect + ')').text());
                 }, this));
-				
-				values = values.filter(function(value, index, self) { 
+
+				values = values.filter(function(value, index, self) {
 					return self.indexOf(value) === index;
 				});
-				
-				//console.log(iSelect, values);
-				
+
                 $(values).each($.proxy(function(i, value){
 					var s_option = $('<option selected></option>').text(value).attr('value', value);
                     $(select).append(s_option);
@@ -798,6 +823,8 @@
                 zIndex: 100,
                 width: 400
             });
+
+			multiselect.find('input.multiselect-search').focus();
         },
         renderNoData: function(){
 
@@ -819,7 +846,7 @@
             return [d.getUTCFullYear(), weekNo];
         },
         renderTableBefore: function(data){
-            var table = this.container.find("table:last");
+            var table = this.container.find("> .table-responsive > table:last");
             var thead_row = table.find('thead tr');
             var tbody_rows = table.find('tbody tr');
 
@@ -833,7 +860,7 @@
             this.setScrollRight(scrollRight);
         },
         renderTableAfter: function(data){
-            var table = this.container.find("table:last");
+            var table = this.container.find("> .table-responsive > table:last");
             var thead_row = table.find('thead tr');
             var tbody_rows = table.find('tbody tr');
 
@@ -931,7 +958,7 @@
 
                 var cell = this.container.find('td[data-row_id=' + data.axis_y_items[row_index].id + ']' +
                     '[data-timestamp=' + this.getPreviousTimeframeTimestamp(data.axis_x_timeframe, data.axis_y_items[row_index].timestamp) + ']');
-					
+
                 if (forced)
                     cell.data('value', 0).text('');
 
@@ -953,11 +980,11 @@
             }
         },
         getScrollRight: function(){
-            return this.container.find('.table-responsive > table:last').outerWidth() - this.container.find('.table-responsive').scrollLeft();
+            return this.container.find('> .table-responsive > table:last').outerWidth() - this.container.find('> .table-responsive').scrollLeft();
         },
         setScrollRight: function(scrollRight){
-            return this.container.find('.table-responsive').scrollLeft(
-                this.container.find('.table-responsive > table:last').outerWidth() - scrollRight
+            return this.container.find('> .table-responsive').scrollLeft(
+                this.container.find('> .table-responsive > table:last').outerWidth() - scrollRight
             );
         },
         htmlEntities: function(str){
