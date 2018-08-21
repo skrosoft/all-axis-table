@@ -23,7 +23,8 @@
     z-index: 100;
 }
 
-body.all-axis-table-loading #main-title > .transbank-table-js{
+body.all-axis-table-loading #main-title > .transbank-table-js,
+body.all-axis-table-loading .transbank-table-js > .floating-header{
 	display: none !important;
 }
 
