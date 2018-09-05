@@ -119,9 +119,9 @@
         addAnimateScrollToQueue: function(scrollLeft){
             $.when(this.queue).done($.proxy(function(){
                 //console.log('DEBUG: [ID='+this.obj.id+'] => ' + this.scrollLeft, this.obj.container.find('.table-responsive').scrollLeft());
-                this.obj.queue = this.obj.container.find('.table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
+                this.obj.queue = this.obj.container.find('> .table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
                 if (this.obj.header_container) // lo mismo pero para el header fijo si es que hay
-                    this.obj.header_queue = this.obj.header_container.find('.table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
+                    this.obj.header_queue = this.obj.header_container.find('> .table-responsive:first').animate({scrollLeft: this.scrollLeft}, this.scrollSpeed).promise();
             }, {obj: this, scrollLeft: scrollLeft, scrollSpeed: this.scroll_speed}));
         },
         prepareSubmit: function(e, params){
@@ -226,7 +226,7 @@
             }
         },
         setContainerEvents: function(){
-            this.container.off('click').on('click', 'table:last td:not(.fixed)', $.proxy(this.onDataCellClick, this));
+            this.container.off('click').on('click', '> .table-responsive > table:last td:not(.fixed)', $.proxy(this.onDataCellClick, this));
 			this.container.off('scroll').on('scroll', $.proxy(this.onContainerScroll, this));
         },
 		onContainerScroll: function(e){
@@ -522,6 +522,11 @@
                 $(this).height($table.find('tr:eq(' + i + ')').height());
             });
         },
+		fixHeaderContainerScrollLeft: function(){
+			if (this.header_container)	this.header_container.find('> .table-responsive:first').scrollLeft(
+				this.container.find('> .table-responsive:first').scrollLeft()
+			);
+		},
         makeFixedHeader: function(isFirstCall){
 
             if (!this.opts.floating_header)	return;
@@ -554,9 +559,7 @@
 
                     if (shouldBeVisible) this.makeFixedHeaderColumnsWidthIquals();
 
-                    // igualar el scroll left
-                    var sL = this.container.find('> .table-responsive').scrollLeft();
-                    this.header_container.find('> .table-responsive').scrollLeft(sL);
+                    this.fixHeaderContainerScrollLeft();
 
                 }, this));
             }

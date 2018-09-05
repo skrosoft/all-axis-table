@@ -1,6 +1,6 @@
 # all-axis-table
 
-v1.3.1
+v1.3.2
 
 ---
 
@@ -9,7 +9,7 @@ Ejemplo de respuesta aceptada:
 ```
 {
 "axis_y_current_page":1,
-"axis_y_page_step":1,
+****"axis_y_page_step":1,****
 "axis_y_total_page_count":35,
 "axis_x_previous_page":1513468800000,
 "axis_x_current_page":1521936000000,

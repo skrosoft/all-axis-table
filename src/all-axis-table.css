@@ -25,7 +25,16 @@
 
 body.all-axis-table-loading #main-title > .transbank-table-js,
 body.all-axis-table-loading .transbank-table-js > .floating-header{
-	display: none !important;
+	/* display: none !important; */
+	border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap; /* 1 */
+	top: -99999999px;
 }
 
 .table-js-container.no-buttons .table.fixed-column.actions tbody{
